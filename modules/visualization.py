@@ -1,109 +1,114 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+from io import BytesIO
+import base64
 
 class Visualizer:
     def __init__(self):
         plt.style.use('default')
     
     def plot_constellation(self, symbols, title="Received Constellation"):
-        """Plot constellation diagram using Plotly"""
-        fig = go.Figure()
+        """Plot constellation diagram using Matplotlib"""
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.scatter(np.real(symbols), np.imag(symbols), alpha=0.6)
+        ax.axhline(0, color='black', linestyle='--', linewidth=0.5)
+        ax.axvline(0, color='black', linestyle='--', linewidth=0.5)
+        ax.grid(True, alpha=0.3)
+        ax.set_title(title)
+        ax.set_xlabel('In-phase')
+        ax.set_ylabel('Quadrature')
+        ax.axis('equal')
         
-        fig.add_trace(go.Scatter(
-            x=np.real(symbols), 
-            y=np.imag(symbols),
-            mode='markers',
-            marker=dict(size=6, opacity=0.6),
-            name='Symbols'
-        ))
+        # Convert to base64 for Streamlit
+        buf = BytesIO()
+        fig.savefig(buf, format="png", dpi=100, bbox_inches='tight')
+        buf.seek(0)
+        img_str = base64.b64encode(buf.read()).decode()
+        plt.close(fig)
         
-        fig.update_layout(
-            title=title,
-            xaxis_title='In-phase',
-            yaxis_title='Quadrature',
-            showlegend=False,
-            template="plotly_white"
-        )
-        
-        return fig
+        return f"data:image/png;base64,{img_str}"
     
     def plot_ber_vs_snr(self, snr_values, ber_values, theoretical_ber=None):
-        """Plot BER vs SNR curve using Plotly"""
-        fig = go.Figure()
-        
-        fig.add_trace(go.Scatter(
-            x=snr_values, 
-            y=ber_values,
-            mode='lines+markers',
-            name='Simulated BER',
-            line=dict(width=2)
-        ))
+        """Plot BER vs SNR curve using Matplotlib"""
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.semilogy(snr_values, ber_values, 'b-o', linewidth=2, label='Simulated BER')
         
         if theoretical_ber is not None:
-            fig.add_trace(go.Scatter(
-                x=snr_values, 
-                y=theoretical_ber,
-                mode='lines',
-                name='Theoretical BER',
-                line=dict(dash='dash', width=2)
-            ))
+            ax.semilogy(snr_values, theoretical_ber, 'r--', linewidth=2, label='Theoretical BER')
         
-        fig.update_layout(
-            title='BER vs SNR Performance',
-            xaxis_title='SNR (dB)',
-            yaxis_title='Bit Error Rate (BER)',
-            yaxis_type='log',
-            template="plotly_white"
-        )
+        ax.grid(True, which="both", ls="-", alpha=0.3)
+        ax.set_xlabel('SNR (dB)')
+        ax.set_ylabel('Bit Error Rate (BER)')
+        ax.set_title('BER vs SNR Performance')
+        ax.legend()
         
-        return fig
+        # Convert to base64 for Streamlit
+        buf = BytesIO()
+        fig.savefig(buf, format="png", dpi=100, bbox_inches='tight')
+        buf.seek(0)
+        img_str = base64.b64encode(buf.read()).decode()
+        plt.close(fig)
+        
+        return f"data:image/png;base64,{img_str}"
     
     def plot_link_budget(self, link_params):
-        """Visualize link budget components using Plotly"""
-        fig = go.Figure(data=[
-            go.Bar(x=list(link_params.keys()), y=list(link_params.values()))
-        ])
+        """Visualize link budget components using Matplotlib"""
+        fig, ax = plt.subplots(figsize=(12, 6))
+        components = list(link_params.keys())
+        values = list(link_params.values())
         
-        fig.update_layout(
-            title="Link Budget Components",
-            xaxis_title="Parameter",
-            yaxis_title="Value (dB)",
-            template="plotly_white"
-        )
+        bars = ax.bar(components, values)
+        ax.set_title("Link Budget Components")
+        ax.set_ylabel("Value (dB)")
+        plt.xticks(rotation=45, ha='right')
         
-        return fig
+        # Add value labels on bars
+        for bar, value in zip(bars, values):
+            ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1,
+                   f'{value:.1f}', ha='center', va='bottom')
+        
+        plt.tight_layout()
+        
+        # Convert to base64 for Streamlit
+        buf = BytesIO()
+        fig.savefig(buf, format="png", dpi=100, bbox_inches='tight')
+        buf.seek(0)
+        img_str = base64.b64encode(buf.read()).decode()
+        plt.close(fig)
+        
+        return f"data:image/png;base64,{img_str}"
     
     def plot_comparison_constellation(self, transmitted, received):
         """Plot comparison of transmitted and received constellations"""
-        fig = make_subplots(rows=1, cols=2, subplot_titles=("Transmitted", "Received"))
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
         
-        fig.add_trace(go.Scatter(
-            x=np.real(transmitted), 
-            y=np.imag(transmitted),
-            mode='markers',
-            name='Transmitted',
-            marker=dict(color='blue', size=6, opacity=0.6)
-        ), row=1, col=1)
+        # Transmitted constellation
+        ax1.scatter(np.real(transmitted), np.imag(transmitted), alpha=0.6, color='blue')
+        ax1.axhline(0, color='black', linestyle='--', linewidth=0.5)
+        ax1.axvline(0, color='black', linestyle='--', linewidth=0.5)
+        ax1.grid(True, alpha=0.3)
+        ax1.set_title('Transmitted Constellation')
+        ax1.set_xlabel('In-phase')
+        ax1.set_ylabel('Quadrature')
+        ax1.axis('equal')
         
-        fig.add_trace(go.Scatter(
-            x=np.real(received), 
-            y=np.imag(received),
-            mode='markers',
-            name='Received',
-            marker=dict(color='red', size=6, opacity=0.6)
-        ), row=1, col=2)
+        # Received constellation
+        ax2.scatter(np.real(received), np.imag(received), alpha=0.6, color='red')
+        ax2.axhline(0, color='black', linestyle='--', linewidth=0.5)
+        ax2.axvline(0, color='black', linestyle='--', linewidth=0.5)
+        ax2.grid(True, alpha=0.3)
+        ax2.set_title('Received Constellation')
+        ax2.set_xlabel('In-phase')
+        ax2.set_ylabel('Quadrature')
+        ax2.axis('equal')
         
-        fig.update_xaxes(title_text="In-phase", row=1, col=1)
-        fig.update_yaxes(title_text="Quadrature", row=1, col=1)
-        fig.update_xaxes(title_text="In-phase", row=1, col=2)
-        fig.update_yaxes(title_text="Quadrature", row=1, col=2)
+        plt.tight_layout()
         
-        fig.update_layout(
-            height=500,
-            showlegend=False,
-            template="plotly_white"
-        )
+        # Convert to base64 for Streamlit
+        buf = BytesIO()
+        fig.savefig(buf, format="png", dpi=100, bbox_inches='tight')
+        buf.seek(0)
+        img_str = base64.b64encode(buf.read()).decode()
+        plt.close(fig)
         
-        return fig
+        return f"data:image/png;base64,{img_str}"
